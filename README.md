@@ -647,6 +647,54 @@ The migrations are cumulative:
 
 ## Testing & smoke checks
 
+### End-to-end test suite (pytest)
+
+`backend/tests/` drives the **real** FastAPI application in-process through Starlette's
+`TestClient` — real routing, dependencies, serialisation and the full request/response cycle —
+against an isolated SQLite database and a temporary media directory. Redis, Celery and the local
+Hugging Face models are stubbed, so the whole suite runs in seconds with **no PostgreSQL, Redis,
+Celery worker or model download required**.
+
+```bash
+cd backend && source venv/bin/activate
+pip install -r requirements.txt           # runtime deps + pytest/httpx (testing)
+pytest                                   # add -v for per-test output, -k to filter
+```
+
+Layout:
+
+```
+backend/tests/
+├── conftest.py                     environment + app import, SQLite schema, fixtures & factories
+├── fake_redis.py                   in-memory Redis (cache, rate limiter, token blacklist)
+├── test_health_and_root.py         /, /ping, /ready, health endpoints, OpenAPI surface
+├── test_auth.py                    register, token, login, profile, validation, expiry
+├── test_auth_lifecycle.py          refresh rotation, logout blacklist, session introspection
+├── test_episodes.py                upload, list, detail, update, delete
+├── test_episodes_transcription.py  transcribe dispatch, transcripts, media streaming, stats
+├── test_clips_crud.py              generate, list/filters, presets, CSV export
+├── test_clips_detail.py            detail, edit (render invalidation), delete, render, batch
+├── test_clips_shares.py            caption export/timeline, favourites, downloads, shares
+├── test_public_shares.py           public metadata, view counts, expiry/revocation gates
+├── test_jobs.py                    job listing, ownership, detail, revoke
+├── test_search_and_stats.py        global search + dashboard analytics
+├── test_admin.py                   superuser user management
+├── test_middleware_and_errors.py   security headers, validation handler, CORS
+├── test_rate_limit_and_config.py   settings validation, cache + rate-limit helpers
+├── test_security.py                password hashing, JWT create/decode/expiry
+├── test_video_helpers.py           caption words, grouping, framing, subtitles
+├── test_caption_styles.py          caption presets and style merging
+└── test_storage_and_share_model.py local storage helpers, ClipShare activity gate
+```
+
+The harness is intentionally hermetic: `conftest.py` sets a test environment (SQLite DSN, temp
+`STORAGE_DIR`, disabled model warm-up), swaps the Celery task modules and the Redis client for
+in-process fakes, then builds the schema with `Base.metadata.create_all`. If you add `pytest.ini`
+settings or new fixtures, keep `pythonpath = .` so `import main`, `import core...` etc. resolve
+exactly as they do at runtime.
+
+### Smoke checks
+
 `backend/scripts/smoke_test.py` verifies the CPU-only helpers without needing models, a database
 or a running server: candidate windowing, heuristics, highlight fallback, caption rendering,
 framing math, storage path handling, **subtitle (SRT/VTT) generation** and **share-link
@@ -656,6 +704,7 @@ expiry/revocation gates**. Run it with:
 cd backend && source venv/bin/activate
 python scripts/smoke_test.py
 ```
+
 
 Quick manual checks:
 

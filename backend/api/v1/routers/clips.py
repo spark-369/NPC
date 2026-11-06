@@ -1,6 +1,7 @@
 """Clip routes: highlight generation, editing, rendering and downloads."""
 
 import csv
+import io
 import logging
 import secrets
 from datetime import datetime, timedelta, timezone

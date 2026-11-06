@@ -49,3 +49,9 @@ Pillow==11.1.0
 # Misc
 python-dotenv==1.0.1
 aiofiles==24.1.0
+
+# Testing (end-to-end / unit suite under backend/tests/ - see pytest.ini).
+# `httpx` is the transport FastAPI/Starlette's TestClient needs; both are
+# pure-Python wheels and harmless to ship in the runtime image.
+pytest==8.3.4
+httpx==0.28.1
